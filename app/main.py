@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from app.database import engine, SessionLocal, Base
-from app.models import Account
+from app.models import Account, Transaction
 
 Base.metadata.create_all(bind=engine)
 
@@ -47,6 +47,8 @@ def deposit_money(account_id: int, amount: float, db: Session = Depends(get_db))
         return {"error": "Amount must be positive"}
     
     account.balance += amount
+    transaction = Transaction(account_id=account.id, amount=amount, type="deposit")
+    db.add(transaction)
     db.commit()
     return {"id": account.id, "owner": account.owner, "balance": account.balance}
 
@@ -64,6 +66,8 @@ def withdraw_money(account_id: int, amount: float, db: Session = Depends(get_db)
         return {"error": "Not enough balance"}
 
     account.balance -= amount
+    transaction = Transaction(account_id=account.id, amount=amount, type="deposit")
+    db.add(transaction)
     db.commit()
     return {"id": account.id, "owner": account.owner, "balance": account.balance}
 
@@ -84,5 +88,23 @@ def transfer_to_someone(from_id: int, to_id: int, amount: float, db: Session = D
     
     sender.balance -= amount
     receiver.balance += amount
+    sender_transaction = Transaction(account_id=sender.id, amount=amount, type="transfer_out")
+    receiver_transaction = Transaction(account_id=receiver.id, amount=amount, type="transfer_in")
+    db.add(sender_transaction)
+    db.add(receiver_transaction)
+    db.commit()
     db.commit()
     return {"sender_id": sender.id, "sender_balance": sender.balance, "receiver_id": receiver.id, "receiver_balance": receiver.balance, "amount_sent": amount}
+
+@app.get("/accounts/{account_id}/transactions", tags=["Transactions"])
+def get_transactions(account_id: int, db: Session = Depends(get_db)):
+    transactions = db.query(Transaction).filter(Transaction.account_id == account_id).all()
+    return [
+        {
+            "id": t.id,
+            "amount": t.amount,
+            "type": t.type,
+            "timestamp": str(t.timestamp)
+        }
+        for t in transactions
+    ]
