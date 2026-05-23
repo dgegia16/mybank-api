@@ -77,14 +77,16 @@ def transfer_to_someone(from_id: int, to_id: int, amount: float, db: Session = D
     sender = db.query(Account).filter(Account.id == from_id).first()
     receiver = db.query(Account).filter(Account.id == to_id).first()
 
+    if not sender or not receiver:
+        return {"error": "Account not found"}
+
     if amount <= 0:
         return {"error": "Amount must be positive"}
 
     if amount > sender.balance:
         return {"error": "Not enough balance"}
 
-    if not sender or not receiver:
-        return {"error": "Account not found"}
+   
     
     sender.balance -= amount
     receiver.balance += amount
@@ -92,7 +94,6 @@ def transfer_to_someone(from_id: int, to_id: int, amount: float, db: Session = D
     receiver_transaction = Transaction(account_id=receiver.id, amount=amount, type="transfer_in")
     db.add(sender_transaction)
     db.add(receiver_transaction)
-    db.commit()
     db.commit()
     return {"sender_id": sender.id, "sender_balance": sender.balance, "receiver_id": receiver.id, "receiver_balance": receiver.balance, "amount_sent": amount}
 
