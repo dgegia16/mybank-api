@@ -109,3 +109,18 @@ def get_transactions(account_id: int, db: Session = Depends(get_db)):
         }
         for t in transactions
     ]
+
+@app.delete("/accounts/{account_id}")
+def delete_account(account_id: int, db: Session = Depends(get_db)):
+    account = db.query(Account).filter(Account.id == account_id).first()
+
+    if not account:
+        return {"error": "Account not found"}
+    
+    if account.balance > 0:
+        return {"error": "Cannot delete account with remaining balance"}
+    
+    db.delete(account)
+    db.commit()
+
+    return {"message": "Account has been deleted successfully"}
