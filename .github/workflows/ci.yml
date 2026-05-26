@@ -1,0 +1,34 @@
+name: CI
+
+on:
+    push:
+        branches: [main, develop]
+
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                python-version: "3.12"
+            - run: pip install -r requirements.txt
+
+            - run: |
+                uvicorn app.main:app &
+                sleep 2
+                curl -f http://localhost:8000/
+    docker:
+        needs: test
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Build Docker image
+              run: docker build -t mybank-api .
+            - name: Test container
+              run: | 
+                docker run -d --name hc-test -p 8000:8000 mybank-api
+                sleep 3
+                curl -f http://localhost:8000/
+                docker stop hc-test
